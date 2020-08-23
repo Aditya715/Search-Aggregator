@@ -1,0 +1,190 @@
+<style>
+    .offMode{
+        display: none;
+    }
+    .onMode{
+        display: block;
+    }
+</style>
+<form action="" method="GET" id="searchForm">
+    {{ form.as_p }}
+    <button type="button" id="search">Search</button>
+</form>
+<div id="data" class="offMode">
+    <table>
+        <thead>
+            <tr>
+                <th>Sr. No.</th>
+                <th>Product Name</th>
+                <th>Product Url</th>
+                <th>Image Url</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
+    <button type="button" value=1 id="count">Next</button>
+</div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+    // preventing enter key to perform a task
+    $(document).ready(function() {
+        $(window).keydown(function(event){
+            if(event.keyCode == 13) {
+            event.preventDefault();
+            return false;
+            }
+        });
+    });
+
+
+    $("#count").click(function(){
+        $("#search").click();
+    })
+
+    $(document).ready(() => {
+        $("#search").on('click', (e) => {
+            $("#data").removeClass().addClass("offMode");
+            $("#tbody").text("");
+            let query = $("#id_search").val();
+            let page_count = parseInt($("#count").val());
+            var allData = [];
+            
+            $.ajax({
+                url : '{% url "paytm_api" %}',
+                method: "POST",
+                data : {
+                    csrfmiddlewaretoken: '{{ csrf_token }}',
+                    query : query,
+                    page_num: page_count
+                },
+                success: (res) => {
+                    let response = res;
+                    if (response.status) {
+                        let html = ``;
+                        let count = 0;
+                        for (x of response.data){
+                            allData.push(x);
+                            count ++;
+                            html += `
+                                <tr>
+                                    <td>${ count }</td>
+                                    <td>${x.product}</td>
+                                    <td>${ x.url }</td>
+                                    <td>${ x.image_url }</td>
+                                    <td>${ x.price }</td>
+                                </tr>
+                            `
+                        }
+                        if ($("#tbody").text() == ""){
+                            $("#tbody").html(html);
+                            $("#data").removeClass().addClass("onMode");
+                            $("#count").val( page_count++ );
+                        }
+                    }
+                }
+            })
+            $.ajax({
+                url : '{% url "shopclues_api" %}',
+                method: "POST",
+                data : {
+                    csrfmiddlewaretoken: '{{ csrf_token }}',
+                    query : query,
+                    page_num: page_count
+                },
+                success: (res) => {
+                    let response = res;
+                    if (response.status) {
+                        let html = ``;
+                        let count = 0;
+                        for (x of response.data){
+                            allData.push(x);
+                            count ++;
+                            html += `
+                                <tr>
+                                    <td>${ count }</td>
+                                    <td>${x.product}</td>
+                                    <td>${ x.url }</td>
+                                    <td>${ x.image_url }</td>
+                                    <td>${ x.price }</td>
+                                </tr>
+                               `
+                        }
+                        if ($("#tbody").text() == ""){
+                            $("#tbody").html(html);
+                            $("#data").removeClass().addClass("onMode");
+                            $("#count").val( page_count++ );
+                        }
+                    }
+                }
+            })
+            $.ajax({
+                url : '{% url "tatacliq_api" %}',
+                method: "POST",
+                data : {
+                    csrfmiddlewaretoken: '{{ csrf_token }}',
+                    query : query,
+                    page_num: page_count
+                },
+                success: (res) => {
+                    let response = res;
+                    if (response.status) {
+                        let html = ``;
+                        let count = 0;
+                        for (x of response.data){
+                            allData.push(x);
+                            count ++;
+                            html += `
+                                <tr>
+                                    <td>${ count }</td>
+                                    <td>${x.product}</td>
+                                    <td>${ x.url }</td>
+                                    <td>${ x.image_url }</td>
+                                    <td>${ x.price }</td>
+                                </tr>
+                            `
+                            $("#data").removeClass().addClass("onMode");
+                        }
+                        if ($("#tbody").text() == ""){
+                            $("#tbody").html(html);
+                            $("#count").val( page_count++ );
+                        }
+                    }
+                }
+            });
+            let saveFlag = true;
+            let ajaxCount = 0;
+            $(document).ajaxComplete(function(){
+                ajaxCount++;
+                if (saveFlag && ajaxCount === 3){
+                    var myData = [];
+                    allData.forEach((x, index) => {
+                        // console.log(index);
+                        myData.push(JSON.stringify({
+                            "product_id" : x.product_id,
+                            "product" : x.product,
+                            "url" : x.url,
+                            "image_url" : x.image_url,
+                            "price" : x.price,
+                            "source": x.source
+                        }))
+                    })
+                   $.ajax({
+                        url: '{% url "db_save" %}',
+                        method: "POST",
+                        data: {
+                            'csrfmiddlewaretoken': '{{ csrf_token }}',
+                            'queryset[]': myData
+                        },
+                        success: (res) => {
+                            save_flag = false;
+                            console.log("Database update successfully.");
+                        }
+                    })
+                }
+            })
+        })
+    })
+</script>
